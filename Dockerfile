@@ -1,9 +1,13 @@
 # build stage
-FROM golang:1.12.6-stretch AS build-env
+FROM --platform=$BUILDPLATFORM golang:1.14-stretch AS build-env
+
 ADD . /src
 ENV CGO_ENABLED=0
 WORKDIR /src
-RUN go build -o dnsmasq_exporter
+
+ARG TARGETOS
+ARG TARGETARCH
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o dnsmasq_exporter
 
 # final stage
 FROM scratch
