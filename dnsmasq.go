@@ -221,6 +221,7 @@ func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		var lines float64
+		leaseInfo.Reset()
 		for scanner.Scan() {
 			arr := strings.Fields(scanner.Text())
 			if got, want := len(arr), 4; got < want {
