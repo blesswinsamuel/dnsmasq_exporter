@@ -65,7 +65,7 @@ var (
 
 		"evictions.bind.": prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "dnsmasq_evictions",
-			Help: "DNS cache exictions: numbers of entries which replaced an unexpired cache entry",
+			Help: "DNS cache evictions: numbers of entries which replaced an unexpired cache entry",
 		}),
 
 		"misses.bind.": prometheus.NewGauge(prometheus.GaugeOpts{
@@ -105,6 +105,13 @@ var (
 		Name: "dnsmasq_leases",
 		Help: "Number of DHCP leases handed out",
 	})
+	leaseInfo = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "dnsmasq_lease_info",
+			Help: "DHCP leases handed out",
+		},
+		[]string{"expiry", "mac", "ip", "devicename"},
+	)
 )
 
 func init() {
@@ -115,6 +122,7 @@ func init() {
 		prometheus.MustRegister(g)
 	}
 	prometheus.MustRegister(leases)
+	prometheus.MustRegister(leaseInfo)
 }
 
 // From https://manpages.debian.org/stretch/dnsmasq-base/dnsmasq.8.en.html:
@@ -173,7 +181,7 @@ func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
 				for _, str := range txt.Txt {
 					arr := strings.Fields(str)
 					if got, want := len(arr), 3; got != want {
-						return fmt.Errorf("stats DNS record servers.bind.: unexpeced number of argument in record: got %d, want %d", got, want)
+						return fmt.Errorf("stats DNS record servers.bind.: unexpected number of argument in record: got %d, want %d", got, want)
 					}
 					queries, err := strconv.ParseFloat(arr[1], 64)
 					if err != nil {
@@ -214,6 +222,11 @@ func (s *server) metrics(w http.ResponseWriter, r *http.Request) {
 		scanner := bufio.NewScanner(f)
 		var lines float64
 		for scanner.Scan() {
+			arr := strings.Fields(scanner.Text())
+			if got, want := len(arr), 4; got != want {
+				return fmt.Errorf("stats DHCP lease record: unexpected number of argument in record: got %d, want %d", got, want)
+			}
+			leaseInfo.WithLabelValues(arr[0], arr[1], arr[2], arr[3]).Set(1)
 			lines++
 		}
 		if err := scanner.Err(); err != nil {
