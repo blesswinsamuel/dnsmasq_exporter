@@ -1,0 +1,56 @@
+name: Create Release
+
+on:
+  push:
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.0" # The Go version to download (if necessary) and use.
+
+      - name: Build go application
+        run: |
+          env GOOS=linux GOARCH=amd64 go build -o dnsmasq_exporter . && tar czf dnsmasq_exporter-linux-amd64.tar.gz dnsmasq_exporter
+          env GOOS=linux GOARCH=arm go build -o dnsmasq_exporter . && tar czf dnsmasq_exporter-linux-arm.tar.gz dnsmasq_exporter
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dnsmasq_exporter-linux-amd64.tar.gz
+          asset_name: dnsmasq_exporter-linux-amd64.tar.gz
+          asset_content_type: application/x-tar
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dnsmasq_exporter-linux-arm.tar.gz
+          asset_name: dnsmasq_exporter-linux-arm.tar.gz
+          asset_content_type: application/x-tar
